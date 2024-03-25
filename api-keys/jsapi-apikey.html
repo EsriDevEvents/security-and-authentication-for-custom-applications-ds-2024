@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1, maximum-scale=1, user-scalable=no"
+    />
+    <title>ArcGIS Developer Guide: Display a map (2D)</title>
+    <style>
+      html,
+      body,
+      #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+    </style>
+    <script src="env.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://js.arcgis.com/4.29/esri/themes/light/main.css"
+    />
+    <script src="https://js.arcgis.com/4.29/"></script>
+
+    <script>
+      require([
+        "esri/config",
+        "esri/Map",
+        "esri/views/MapView",
+        "esri/Basemap",
+        "esri/widgets/Search",
+        "esri/layers/FeatureLayer",
+        "esri/Graphic",
+        "esri/rest/networkService",
+        "esri/rest/serviceArea",
+        "esri/rest/support/ServiceAreaParameters",
+        "esri/rest/support/FeatureSet",
+      ], (
+        esriConfig,
+        Map,
+        MapView,
+        Basemap,
+        Search,
+        FeatureLayer,
+        Graphic,
+        NetworkService,
+        ServiceArea,
+        SAParams,
+        FeatureSet
+      ) => {
+        esriConfig.apiKey =   geocoding_routing_key //geocoding_key
+           
+        const parcels = new FeatureLayer({
+          portalItem: {
+            id: "4e929dbd0c9f4bad845e5ac2a6ed9f31",
+          },
+        })
+
+        // routing params
+        let travelMode = null
+        const routeURL =
+          "https://route-api.arcgis.com/arcgis/rest/services/World/ServiceAreas/NAServer/ServiceArea_World"
+
+        const map = new Map({
+          basemap: "gray-vector",
+          layers: [parcels],
+        })
+
+        const view = new MapView({
+          map: map,
+          center: [-118.4803, 34.0229],
+          zoom: 13, // scale: 36111.909643
+          container: "viewDiv",
+          constraints: {
+            snapToZoom: false,
+          },
+        })
+
+        const createGraphic = (fromGeometry) => {
+          const newGraphic = new Graphic({
+            geometry: fromGeometry,
+            symbol: {
+              type: "simple-marker",
+              color: "white",
+              size: 8,
+            },
+          })
+
+          view.graphics.add(newGraphic)
+          return newGraphic
+        }
+
+        const createServiceArea = async (atPoint) => {
+          view.graphics.removeAll()
+          const loc = createGraphic(atPoint)
+          const saResp = await findServiceArea(loc)
+          displayServiceArea(saResp)
+        }
+
+        const findServiceArea = async (atPoint) => {
+          if (!travelMode) {
+            const netDesc = await NetworkService.fetchServiceDescription(
+              routeURL
+            )
+            travelMode = netDesc.supportedTravelModes.find(
+              (tm) => tm.name === "Walking Distance"
+            )
+          }
+
+          const params = new SAParams({
+            facilities: new FeatureSet({
+              features: [atPoint],
+            }),
+            defaultBreaks: [0.5],
+            travelMode,
+            travelDirection: "to-facility",
+            outSpatialReference: view.spatialReference,
+            trimOuterPolygon: true,
+          })
+
+          const serviceAreaResp = await ServiceArea.solve(routeURL, params)
+
+          return serviceAreaResp.serviceAreaPolygons
+        }
+
+        const displayServiceArea = (resp) => {
+          const graphics = resp.features.map((g) => {
+            g.symbol = {
+              type: "simple-fill",
+              color: "rgba(255,0,0,0.25)",
+            }
+            return g
+          })
+
+          view.graphics.addMany(graphics)
+        }
+
+        view.when(() => {
+          const search = new Search({ view })
+          view.ui.add(search, { position: "top-right" })
+
+          view.on("click", (evt) => {
+            if (!view.popupEnabled){
+              view.graphics.removeAll()
+              createServiceArea(evt.mapPoint)
+            }
+          })
+
+          const cBox = document.getElementById("chkBox")
+          cBox.addEventListener("change", (evt)=>{
+            view.popupEnabled = evt.target.checked
+            if (evt.target.checked){
+              view.graphics.removeAll()
+            }
+          })
+        })
+      })
+
+      
+    </script>
+  </head>
+
+  <body>
+    <header>
+      <h1>Maps SDK for JavaScript - API Key authentication</h1>
+      <input id="chkBox" type="checkbox" checked>Popup</input>
+    </header>
+    <div id="viewDiv"></div>
+  </body>
+</html>

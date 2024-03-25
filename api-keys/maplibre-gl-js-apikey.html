@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <script src="env.js"></script>
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+    <link
+      href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <style>
+      html,
+      body,
+      #map {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 14px;
+        color: #323232;
+      }
+    </style>
+  </head>
+  <body>
+    <header><h1>MapLibre GL JS - API Key authentication</h1></header>
+    <div id="map"></div>
+
+    <script>
+      const apiKey = maplibre_key
+      const basemapEnum = "arcgis/community"
+      const map = new maplibregl.Map({
+        container: "map", // the id of the div element
+        style: `https://basemapstyles-api.arcgis.com/arcgis/rest/services/styles/v2/styles/${basemapEnum}?token=${apiKey}`,
+        zoom: 14, // starting zoom
+        center: [-118.483, 34.0234], // starting location [longitude, latitude]
+      })
+
+      const parcelsURL = `https://vectortileservices1.arcgis.com/uIpesQSJUDNeF08O/arcgis/rest/services/Santa_Monica_vector_tiles/VectorTileServer/tile/{z}/{y}/{x}.pbf?token=${apiKey}`
+
+      map.once("load", () => {
+        map.addSource("parcels", {
+          type: "vector",
+          tiles: [parcelsURL],
+        })
+
+        map.addLayer({
+          id: "parcels-fill",
+          type: "fill",
+          source: "parcels",
+          "source-layer": "parcels",
+          paint: {
+            "fill-opacity": 0.75,
+            "fill-color": [
+              "case",
+              ["==", ["get", "usetype"], "Residential"],
+              "#f789d8",
+              ["==", ["get", "usetype"], "Commercial"],
+              "#ffde3e",
+              ["==", ["get", "usetype"], "Industrial"],
+              "#fc921f",
+              ["==", ["get", "usetype"], "Government"],
+              "#9e559c",
+              ["==", ["get", "usetype"], "Institutional"],
+              "#a7c636",
+              ["==", ["get", "usetype"], "Recreational"],
+              "#ed5151",
+              ["==", ["get", "usetype"], "Miscellaneous"],
+              "#149ece",
+              "#ffffff",
+            ],
+          },
+        })
+
+        map.on("click", "parcels-fill", (e) => {
+          const parcel = map.queryRenderedFeatures(e.point, {
+            layers: ["parcels-fill"],
+          })[0]
+
+          new maplibregl.Popup()
+            .setHTML(
+              `Address: ${parcel.properties.situsaddre}<br>Use type: ${parcel.properties.usetype}`
+            )
+            .setLngLat(e.lngLat)
+            .addTo(map)
+        })
+
+        map.on("mouseenter", "parcels-fill", () => {
+          map.getCanvas().style.cursor = "pointer"
+        })
+
+        map.on("mouseleave", "parcels-fill", () => {
+          map.getCanvas().style.cursor = ""
+        })
+      })
+    </script>
+  </body>
+</html>

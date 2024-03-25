@@ -1,0 +1,101 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1,maximum-scale=1,user-scalable=no"
+    />
+    <title>Esri Leaflet Tutorials: Add a feature layer</title>
+
+    <!-- Load Leaflet from CDN -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+    <script src="env.js"></script>
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      crossorigin=""
+    ></script>
+    <!-- Load Esri Leaflet from CDN -->
+    <script src="https://unpkg.com/esri-leaflet@3.0.10/dist/esri-leaflet.js"></script>
+    <script src="https://unpkg.com/esri-leaflet-vector@4.2.3/dist/esri-leaflet-vector.js"></script>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        width: 100%;
+        height: 100%;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 14px;
+        color: #323232;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header><h1>Esri leaflet - API Key authentication</h1></header>
+    <div id="map"></div>
+
+    <script>
+      const apiKey = leaflet_key
+
+      const parcelsURL =
+        "https://services1.arcgis.com/uIpesQSJUDNeF08O/arcgis/rest/services/santa_monica_test/FeatureServer/0"
+
+      const basemapEnum = "arcgis/light-gray"
+
+      const map = L.map("map", {
+        minZoom: 2,
+      }).setView([34.0234, -118.483], 15)
+
+      L.esri.Vector.vectorBasemapLayer(basemapEnum, {
+        apiKey: apiKey,
+      }).addTo(map)
+
+      const parcels = L.esri
+        .featureLayer({
+          url: parcelsURL,
+          token: apiKey,
+          style: (feature) => {
+            const useType = feature.properties.usetype
+            let fillColor = null
+            if (useType === "Residential") {
+              fillColor = "#f789d8"
+            } else if (useType === "Commercial") {
+              fillColor = "#ffde3e"
+            } else if (useType === "Industrial") {
+              fillColor = "#fc921f"
+            } else if (useType === "Government") {
+              fillColor = "#9e559c"
+            } else if (useType === "Institutional") {
+              fillColor = "#a7c636"
+            } else if (useType === "Recreational") {
+              fillColor = "#ed5151"
+            } else if (useType === "Miscellaneous") {
+              fillColor = "#149ece"
+            }
+
+            return {
+              color: "#ffffff",
+              stroke: true,
+              weight: 0.25,
+              fillColor: fillColor,
+              fillOpacity: 0.75,
+            }
+          },
+        })
+        .bindPopup((lyr) => {
+          return L.Util.template(
+            `Parcel Number: ${lyr.feature.properties.ain}<br>Address: ${lyr.feature.properties.situsaddre}<br>Use type: ${lyr.feature.properties.usetype}`
+          )
+        })
+
+      parcels.addTo(map)
+    </script>
+  </body>
+</html>
